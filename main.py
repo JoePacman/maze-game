@@ -1,141 +1,114 @@
-import numpy as np
-import random
-from enum import Enum
+from maze import Maze, Wall
+from coordinate import Side, Status, CoordinateArray
 
 
-class Side(Enum):
-    TOP, BOTTOM, LEFT, RIGHT = range(4)
+class Tracking:
+    # need to track each multiple and the directions tried from them
+    def __init__(self):
+        self.multiples = None
+
+    def add_multiple(self, multiple):
+        self.multiples.append(multiple)
+
+    def get_next_direction(self):
+        #
 
 
-class Status(Enum):
-    P, X, U = range(3)
-
-
-class Wall:
-    def __init__(self, x, y, side):
+class Multiple:
+    def __init__(self, x, y, previousDirection):
         self.x = x
         self.y = y
-        self.side = side
+        self.directions_tried = [previousDirection]
+        self.no_options = False
+
+    def addDirectionTried(self, side: Side):
+        self.directions_tried.append(side)
+        if Side.BOTTOM in self.directions_tried and Side.Top in self.directions_tried and Side.LEFT in self.directions_tried and Side.RIGHT in self.directions_tried:
+            self.no_options = True
 
 
-class Coordinate:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-        self.status = Status.U
+def solve_maze(maze_i: Maze):
+    coordinates = CoordinateArray(maze_i.width, maze_i.height)
 
-    def set_status(self, status_o: Status):
-        self.status = status_o
+    x = 0  # start x position
+    y = 0  # start y position
+    previous_direction = Side.BOTTOM  # entry point
+    last_multiple = []
+    last_multiple_directions_tried = []
+    current_path_from_last_multiple = []
+    previous_direction_at_last_multiple = None
+    exit_found = False
+    i = 0  # temp
 
-    def __repr__(self):
-        return self.status.name
+    while exit_found is False:
 
+        routes_available = maze.routes_available(coordinates.get_coordinate(x, y), previous_direction)
 
-class Maze(object):
+        if len(routes_available) is 0:
+            coordinates.update_coordinate(x, y, Status.X)
+            for x_y in current_path_from_last_multiple:
+                coordinates.update_coordinate(x_y[0], x_y[1], Status.X)
+            x, y = last_multiple
 
-    def __init__(self, width, height,
-                 horizontals_o=None, verticals_o=None,
-                 entry_point_o: Wall = None, exit_point_o: Wall = None):
-        self.width = width
-        self.height = height
-        if horizontals_o is None or verticals_o is None:
-            # initialise arrays of horizontals and verticals (walls and ceilings/floors)
-            self.horizontals = [[False] * self.width for i in range(self.height + 1)]
-            self.verticals = [[False] * (self.width + 1) for i in range(self.height)]
-            self.__setup_random_maze()
-        else:
-            self.horizontals = horizontals_o
-            self.verticals = verticals_o
-            self.entry_point = entry_point_o
-            self.exit_point = exit_point_o
+        elif len(routes_available) is 1:
+            next_direction = routes_available[0]
+            current_path_from_last_multiple.append([x, y])
+            coordinates.update_coordinate(x, y, Status.U)
+            previous_direction = find_previous_direction(next_direction)
+            x, y = move_one(x, y, next_direction)
 
-    def __setup_random_maze(self):
-        # set edges
-        self.__set_row(0, True)
-        self.__set_row(-1, True)
-        self.__set_column(0, True)
-        self.__set_column(-1, True)
-        # set entry point
-        entry_i = random.randrange(0, self.width - 1)
-        self.__set_horizontal(entry_i, 0, False)
-        self.entry_point = Wall(entry_i, 0, Side.BOTTOM)
-        # set exit point
-        exit_i = random.randrange(0, self.width - 1)
-        self.__set_horizontal(exit_i, -1, False)
-        self.exit_point = Wall(exit_i, self.height, Side.TOP)
-        # create exit route
-        #self.__create_route()
+        if len(routes_available) > 1:
+            # ensure that we move in a new direction
+            for side in last_multiple_directions_tried:
+                if side in routes_available:
+                    routes_available.remove(side)
 
+            next_direction = routes_available[0]
+            previous_direction = find_previous_direction(next_direction)
 
-    def __get_vertical(self, x, y) -> bool:
-        return self.verticals[y][x]
+            last_multiple = [x, y]
+            last_multiple_directions_tried.append(previous_direction)
+            last_multiple_directions_tried.append(next_direction)
+            current_path_from_last_multiple = []
 
-    def __set_vertical(self, x, y, value):
-        self.verticals[y][x] = value
+            coordinates.update_coordinate(x, y, Status.M)
+            x, y = move_one(x, y, next_direction)
 
-    def __get_horizontal(self, x, y) -> bool:
-        return self.horizontals[y][x]
+        maze_i.print_maze(coordinates)
 
-    def __set_horizontal(self, x, y, value):
-        self.horizontals[y][x] = value
-
-    def __set_row(self, x, value):
-        self.horizontals[x] = [True for i in range(self.width)]
-
-    def __set_column(self, y, value):
-        for i in range(0, self.height):
-            self.verticals[i][y] = True
-
-    #def __create_route(self):
-
-    # Assuming there can be no infinite loops (e.g. paths that lead back)
-    def check_viable_exit(self, coordinate: Coordinate) -> bool:
-
-        return True
-
-    def __route_available(self, coordinate: Coordinate, side: Side) -> bool:
-        if side is Side.BOTTOM:
-            return not self.__get_horizontal(coordinate.x, coordinate.y)
-        elif side is Side.TOP:
-            return not self.__get_horizontal(coordinate.x, coordinate.y + 1)
-        elif side is Side.LEFT:
-            return not self.__get_vertical(coordinate.x, coordinate.y)
-        elif side is Side.RIGHT:
-            return not self.__get_vertical(coordinate.x + 1, coordinate.y)
+        i += 1
+        if i > 100:
+            exit_found = True
 
 
-    def print_maze(self):
-        # printing rows in backward order so [0, 0] is bottom left of print out.
-        for i in range(1, self.height + 1):
-            self.__print_row(self.horizontals[-i], ' ───')
-            self.__print_row(self.verticals[-i], '|   ')
-        self.__print_row(self.horizontals[-self.height - 1], ' ───')
+def find_previous_direction(next_direction: Side) -> Side:
+    if next_direction is Side.BOTTOM:
+        return Side.TOP
+    elif next_direction is Side.TOP:
+        return Side.BOTTOM
+    elif next_direction is Side.LEFT:
+        return Side.RIGHT
+    elif next_direction is Side.RIGHT:
+        return Side.LEFT
 
-    def __print_row(self, row, value):
-        print(''.join(value if elem else '    ' for elem in row))
 
-
-def solveMaze(maze: Maze):
-    # create array of coordinates
-    coordinates = []
-    for i in range(0, maze.width):
-        x_coordinates = []
-        for j in range(0, maze.height):
-            x_coordinates.append(Coordinate(i, j))
-        coordinates.append(x_coordinates)
-
-    print(coordinates)
+def move_one(x, y, direction: Side) -> [int, int]:
+    if direction is Side.BOTTOM:
+        return [x, y - 1]
+    elif direction is Side.TOP:
+        return [x, y + 1]
+    elif direction is Side.LEFT:
+        return [x - 1, y]
+    elif direction is Side.RIGHT:
+        return [x + 1, y]
 
 
 if __name__ == "__main__":
-    #maze = Maze(5, 5)
-    #maze.print_maze()
+    # maze = Maze(5, 5)
+    # maze.print_maze()
 
     # testing logic to determine if there is a possible route to exit - pre-generating maze
-    horizontals = [[True, False, True], [False, True, False], [True, True, False], [True, False, True]]
-    verticals = [[True, False, True, True], [True, False, False, True], [True, False, False, True]]
+    horizontals = [[False, True, True], [False, True, False], [False, True, False], [True, False, True]]
+    verticals = [[True, True, False, True], [True, False, False, True], [True, True, False, True]]
     maze = Maze(3, 3, horizontals, verticals, Wall(1, 2, Side.TOP), Wall(0, 1, Side.BOTTOM))
-    maze.print_maze()
-    solveMaze(maze)
-
-
+    solve_maze(maze)
