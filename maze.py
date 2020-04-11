@@ -3,18 +3,10 @@ import os
 from coordinate import Side, Coordinate, CoordinateArray
 
 
-class Wall:
-    def __init__(self, x, y, side: Side):
-        self.x = x
-        self.y = y
-        self.side = side
-
-
 class Maze(object):
 
     def __init__(self, width, height,
-                 horizontals_o=None, verticals_o=None,
-                 entry_point_o: Wall = None, exit_point_o: Wall = None):
+                 horizontals_o=None, verticals_o=None):
         self.width = width
         self.height = height
         if horizontals_o is None or verticals_o is None:
@@ -25,8 +17,6 @@ class Maze(object):
         else:
             self.horizontals = horizontals_o
             self.verticals = verticals_o
-            self.entry_point = entry_point_o
-            self.exit_point = exit_point_o
 
     def __setup_random_maze(self):
         # set edges
@@ -37,11 +27,9 @@ class Maze(object):
         # set entry point
         entry_i = random.randrange(0, self.width - 1)
         self.__set_horizontal(entry_i, 0, False)
-        self.entry_point = Wall(entry_i, 0, Side.BOTTOM)
         # set exit point
         exit_i = random.randrange(0, self.width - 1)
         self.__set_horizontal(exit_i, -1, False)
-        self.exit_point = Wall(exit_i, self.height, Side.TOP)
         # create exit route
         #self.__create_route()
 
@@ -96,7 +84,7 @@ class Maze(object):
 
     def print_maze(self, coordinates: CoordinateArray = None):
         # clear previous print out
-        print ("\n" * 20)
+        #print ("\n" * 20)
 
         # printing rows in backward order so [0, 0] is bottom left of print out.
         for i in range(1, self.height + 1):
