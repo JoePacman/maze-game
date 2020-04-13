@@ -1,102 +1,48 @@
 from maze import Maze
 from coordinate import Side, Status, CoordinateArray
+from tracking import Tracking, Multiple
 
 
-class Multiple:
-    def __init__(self, x, y, previous_direction):
-        self.x = x
-        self.y = y
-        self.directions_tried = [previous_direction]
-        self.no_options = False
-
-    def get_location(self) -> [int, int]:
-        return [self.x, self.y]
-
-    def add_direction_tried(self, side: Side):
-        self.directions_tried.append(side)
-        if Side.BOTTOM in self.directions_tried and Side.TOP in self.directions_tried \
-                and Side.LEFT in self.directions_tried and Side.RIGHT in self.directions_tried:
-            self.no_options = True
-
-    def get_direction_untried(self, routes_available):
-        if Side.TOP not in self.directions_tried and Side.TOP in routes_available:
-            return Side.TOP
-        elif Side.BOTTOM not in self.directions_tried and Side.BOTTOM in routes_available:
-            return Side.BOTTOM
-        elif Side.LEFT not in self.directions_tried and Side.LEFT in routes_available:
-            return Side.LEFT
-        elif Side.RIGHT not in self.directions_tried and Side.RIGHT in routes_available:
-            return Side.RIGHT
-
-
-class Tracking:
-    # need to track each multiple and the directions tried from them
-    def __init__(self):
-        self.multiples = []
-        self.paths_between_multiples = []
-
-    def add_multiple(self, multiple, path_to_multiple=None):
-        self.multiples.append(multiple)
-        self.paths_between_multiples.append(path_to_multiple)
-
-    # cycles back through multiples finding last one with an untried route
-    def get_next_viable_multiple(self, coordinates) -> Multiple:
-        if not self.multiples[-1].no_options:
-            return self.multiples[-1]
-        else:
-            for [x, y] in self.paths_between_multiples:
-                coordinates.update_coordinate(x, y, Status.X)
-            coordinates.update_coordinate(self.multiples[-1].x, self.multiples[-1].y, Status.X)
-            del self.multiples[-1]
-            return self.multiples[-1]
-        # TODO array index out of bounds handling
-
-    def check_coordinates_not_a_previous_multiple(self, x, y) -> bool:
-        for multiple in self.multiples:
-            if multiple.x is x and multiple.y is y:
-                return False
-        return True
-
-    def add_direction_trying_from_current_multiple(self, side: Side):
-        self.multiples[-1].add_direction_tried(side)
-
-
-def solve_maze(maze_i: Maze):
+def solve_maze(maze_i: Maze, start_x, start_y, entry_direction):
     coordinates = CoordinateArray(maze_i.width, maze_i.height)
 
-    x = 0  # start x position
-    y = 0  # start y position
-    previous_direction = Side.BOTTOM  # entry point
+    x = start_x
+    y = start_y
+    previous_direction = entry_direction
     current_path_after_multiple = []
     exit_found = False
     tracking = Tracking()
-
-    i = 0  # temp
+    maze_i.print_maze(coordinates)
 
     while exit_found is False:
-        routes_available = maze.routes_available(coordinates.get_coordinate(x, y), previous_direction)
+        routes = maze.routes_available(coordinates.get_coordinate(x, y), previous_direction)
         if tracking.check_coordinates_not_a_previous_multiple(x, y):
 
             # dead end  - find last multiple with remaining routes to try
-            if len(routes_available) is 0:
+            if len(routes) is 0:
                 coordinates.update_coordinate(x, y, Status.X)
                 # update all coordinates in the path just taken as X
                 for x_y in current_path_after_multiple:
                     coordinates.update_coordinate(x_y[0], x_y[1], Status.X)
                 # TODO - if no way out this might throw an error?
                 x, y = tracking.get_next_viable_multiple(coordinates).get_location()
-                next_direction = tracking.get_next_viable_multiple(coordinates).get_direction_untried(routes_available)
+                # not including previous direction in calculating new route because we don't know previous direction
+                # from the last multiple (and when we initialised that multiple we added previous direction at the time
+                # to its directions_tried
+                routes_new = maze.routes_available(coordinates.get_coordinate(x, y))
+                next_direction = tracking.get_next_viable_multiple(coordinates).get_direction_untried(routes_new)
+                tracking.add_direction_trying_from_current_multiple(next_direction)
                 current_path_after_multiple = []
-                continue
 
             # one route available - continue moving
-            elif len(routes_available) is 1:
-                next_direction = routes_available[0]
-                coordinates.update_coordinate(x, y, Status.U)
+            elif len(routes) is 1:
+                next_direction = routes[0]
+                coordinates.update_coordinate(x, y, Status.C)
+                current_path_after_multiple.append([x, y])
 
             # FIRST time this multiple has been found
-            if len(routes_available) > 1:
-                next_direction = routes_available[0]
+            elif len(routes) > 1:
+                next_direction = routes[0]
                 multiple = Multiple(x, y, previous_direction)
                 multiple.add_direction_tried(next_direction)
                 tracking.add_multiple(multiple, current_path_after_multiple)
@@ -105,21 +51,21 @@ def solve_maze(maze_i: Maze):
 
         # SUBSEQUENT time we have returned to this multiple
         else:
-            next_direction = tracking.get_next_viable_multiple(coordinates).get_direction_untried(routes_available)
+            routes_new = maze.routes_available(coordinates.get_coordinate(x, y))
+            next_direction = tracking.get_next_viable_multiple(coordinates).get_direction_untried(routes_new)
             tracking.add_direction_trying_from_current_multiple(next_direction)
             current_path_after_multiple = []
 
-        current_path_after_multiple.append([x, y])
         x, y = move_one(x, y, next_direction)
         previous_direction = find_previous_direction(next_direction)
 
         maze_i.print_maze(coordinates)
 
-        i += 1
-        if i > 100:
+        if x < 0 or x is maze_i.width or y < 0 or y is maze_i.height:
+            print("SUCCESS outside maze at position [%s, %s] (bottom left is [0, 0] " % (x, y))
+            coordinates.update_path_found()
+            maze_i.print_maze(coordinates)
             exit_found = True
-
-        # TODO - check for if outside of 0 , 0 , width, height bounds for whether escaped maze
 
 
 def find_previous_direction(next_direction: Side) -> Side:
@@ -149,7 +95,14 @@ if __name__ == "__main__":
     # maze.print_maze()
 
     # testing logic to determine if there is a possible route to exit - pre-generating maze
-    horizontals = [[False, True, True, True], [False, True, False, False], [False, True, False, False], [True, True, True, False]]
-    verticals = [[True, True, False, False, True], [True, False, False, True, True], [True, True, False, True, True]]
-    maze = Maze(4, 3, horizontals, verticals)
-    solve_maze(maze)
+    horizontals = [[True, True, True, True, True],
+                   [False, False, True, False, False],
+                   [False, False, True, False, False],
+                   [True, False, False, True, False],
+                   [True, True, True, True, False]]
+    verticals = [[True, True, True, False, False, True],
+                 [True, False, False, False, True, True],
+                 [True, True, True, False, True, True],
+                 [True, False, True, False, True, True]]
+    maze = Maze(5, 4, horizontals, verticals)
+    solve_maze(maze, 0, 0, Side.BOTTOM)

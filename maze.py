@@ -60,17 +60,18 @@ class Maze(object):
 
         return True
 
-    def routes_available(self, coordinate: Coordinate, entry_point: Side) -> [Side]:
+    def routes_available(self, coordinate: Coordinate, previous_direction: Side = None) -> [Side]:
         sides = []
-        if self.__route_available(coordinate, Side.TOP) and entry_point != Side.TOP:
+        if self.__route_available(coordinate, Side.TOP) and (previous_direction != Side.TOP or None):
             sides.append(Side.TOP)
-        if self.__route_available(coordinate, Side.BOTTOM) and entry_point != Side.BOTTOM:
+        if self.__route_available(coordinate, Side.BOTTOM) and (previous_direction != Side.BOTTOM or None):
             sides.append(Side.BOTTOM)
-        if self.__route_available(coordinate, Side.LEFT) and entry_point != Side.LEFT:
+        if self.__route_available(coordinate, Side.LEFT) and (previous_direction != Side.LEFT or None):
             sides.append(Side.LEFT)
-        if self.__route_available(coordinate, Side.RIGHT) and entry_point != Side.RIGHT:
+        if self.__route_available(coordinate, Side.RIGHT) and (previous_direction != Side.RIGHT or None):
             sides.append(Side.RIGHT)
         return sides
+
 
     def __route_available(self, coordinate: Coordinate, side: Side) -> bool:
         if side is Side.BOTTOM:
@@ -84,7 +85,7 @@ class Maze(object):
 
     def print_maze(self, coordinates: CoordinateArray = None):
         # clear previous print out
-        #print ("\n" * 20)
+        print ("\n" * 20)
 
         # printing rows in backward order so [0, 0] is bottom left of print out.
         for i in range(1, self.height + 1):

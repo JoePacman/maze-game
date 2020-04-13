@@ -6,10 +6,10 @@ class Side(Enum):
 
 
 class Status(Enum):
-    P, X, U, M = range(4)
+    P, X, C, M = range(4)
     # P = path to exit
     # X = dead end
-    # U = unknown
+    # C = current path
     # M = multiple paths to explore
 
 
@@ -47,3 +47,9 @@ class CoordinateArray:
 
     def get_row(self, y):
         return self.coordinates[y]
+
+    def update_path_found(self):
+        for row in self.coordinates:
+            for coordinate in row:
+                if coordinate.status is Status.C or coordinate.status is Status.M:
+                    self.update_coordinate(coordinate.x, coordinate.y, Status.P)
