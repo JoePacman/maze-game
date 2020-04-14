@@ -1,5 +1,6 @@
 import random
 import os
+import time
 from coordinate import Side, Coordinate, CoordinateArray
 
 
@@ -15,8 +16,22 @@ class Maze(object):
             self.verticals = [[False] * (self.width + 1) for i in range(self.height)]
             self.__setup_random_maze()
         else:
+            self.__check_sizes(width, height, horizontals_o, verticals_o)
             self.horizontals = horizontals_o
             self.verticals = verticals_o
+
+    def __check_sizes(self, width, height, horizontals_o: list, verticals_o: list):
+        if len(horizontals_o)is not height + 1:
+            raise IndexError('Incorrect number of horizontals rows - should be height + 1')
+        if len(verticals_o) is not height:
+            raise IndexError('Incorrect number of verticals rows - should be height')
+        for row in horizontals_o:
+            if len(row) is not width:
+                raise IndexError('One or more horizontals rows missing/ exceeding values')
+        for row in verticals_o:
+            if len(row) is not width + 1:
+                raise IndexError('One or more verticals rows missing/ exceeding values')
+
 
     def __setup_random_maze(self):
         # set edges
@@ -72,7 +87,6 @@ class Maze(object):
             sides.append(Side.RIGHT)
         return sides
 
-
     def __route_available(self, coordinate: Coordinate, side: Side) -> bool:
         if side is Side.BOTTOM:
             return not self.__get_horizontal(coordinate.x, coordinate.y)
@@ -84,8 +98,9 @@ class Maze(object):
             return not self.__get_vertical(coordinate.x + 1, coordinate.y)
 
     def print_maze(self, coordinates: CoordinateArray = None):
-        # clear previous print out
-        print ("\n" * 20)
+        # clear previous print out and short pause for display purposes
+        #time.sleep(.450)
+        os.system('clear')
 
         # printing rows in backward order so [0, 0] is bottom left of print out.
         for i in range(1, self.height + 1):
@@ -94,6 +109,7 @@ class Maze(object):
                 self.__print_vertical_row(self.verticals[-i])
             else:
                 self.__print_vertical_row(self.verticals[-i], coordinates.get_row(-i))
+        # top row - one more horizontal row than vertical due to top and bottom
         self.__print_horizontal_row(self.horizontals[-self.height - 1])
 
     def __print_horizontal_row(self, row):
