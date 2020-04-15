@@ -48,8 +48,9 @@ class Tracking:
         self.next_direction = None
 
     def add_multiple(self, multiple):
+        if len(self.multiples) != 0:
+            self.paths_between_multiples.append(self.current_path_after_multiple)
         self.multiples.append(multiple)
-        self.paths_between_multiples.append(self.current_path_after_multiple)
 
     # cycles back through multiples finding last one with an untried route
     def get_next_viable_multiple(self, coordinates) -> Multiple:

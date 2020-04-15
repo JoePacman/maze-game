@@ -26,7 +26,7 @@ def solve_maze(maze_i: Maze, start_x, start_y):
                 coordinates.update_coordinate(x, y, Status.X)
                 # update all coordinates in current path to X (don't include the M)
                 for x_y in tracking.current_path_after_multiple:
-                     coordinates.update_coordinate(x_y[0], x_y[1], Status.X)
+                    coordinates.update_coordinate(x_y[0], x_y[1], Status.X)
                 # reset x, y back to multiples position
                 x, y = tracking.get_next_viable_multiple(coordinates).get_location()
                 coordinates.update_coordinate(x, y, Status.M)
@@ -44,6 +44,7 @@ def solve_maze(maze_i: Maze, start_x, start_y):
                 coordinates.update_coordinate(x, y, Status.M)
                 tracking.add_multiple(Multiple(x, y, [tracking.previous_direction, tracking.next_direction],
                                                routes_available))
+                tracking.current_path_after_multiple = [[x, y]]
 
         # SUBSEQUENT time we have returned to this multiple
         else:
@@ -54,6 +55,7 @@ def solve_maze(maze_i: Maze, start_x, start_y):
 
         maze_i.print_maze(coordinates)
 
+        # check if outside maze
         if x < 0 or x is maze_i.width or y < 0 or y is maze_i.height:
             coordinates.update_path_found()
             maze_i.print_maze(coordinates)

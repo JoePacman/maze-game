@@ -99,7 +99,7 @@ class Maze(object):
 
     def print_maze(self, coordinates: CoordinateArray = None):
         # clear previous print out and short pause for display purposes
-        #time.sleep(.450)
+        time.sleep(.450)
         os.system('clear')
 
         # printing rows in backward order so [0, 0] is bottom left of print out.
